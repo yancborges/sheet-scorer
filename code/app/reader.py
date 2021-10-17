@@ -1,6 +1,7 @@
 from mido import MidiFile
 import matplotlib.pyplot as plt
 from winsound import Beep
+import time
 
 
 def read_midi(file: str) -> object:
@@ -29,13 +30,14 @@ class Note:
         'B': [30.8, 61.7, 123, 246, 493, 987, 1975, 3951, 7902]
     }
     
-    def __init__(self, raw_note, tempo):
+    def __init__(self, raw_note, tempo, position, bar_size):
         self.__raw = raw_note
-        self.position = raw_note.time
+        self.position = position
         self.value = raw_note.note
-        self.attack = raw_note.velocity
-        self.duration = raw_note.time
+        self.attack = raw_note.velocity # How strong note must be played (i think it should be 0 when silent
+        self.duration = raw_note.time   #                                  but it didnt worked this way)                                   
         self.tempo = tempo
+        self.bar_size = bar_size
         self.enrich()
 
     def enrich(self):
@@ -44,43 +46,44 @@ class Note:
         self.name = self.name_table[idx]
         self.octave = int(value / 12)
         self.frequency = self.frequency_chart[self.name][self.octave]
-        self.bmp = 60 / (self.tempo / 1000000)
+        self.bmp = round(60 / (self.tempo / 1000000), 0) # tempo is given in microseconds
         self.tempo_velocity = self.duration # milliseconds
+        self.is_silent = False if self.attack == 0 else True
 
 
     
-
 class Song:
 
     __midi = None
 
     def __init__(self, file_path):
         self.__midi = read_midi(file_path)
-        self.get_messages()
-        self.extract_info_from_file()
 
 
-    def extract_info_from_file(self):
-        self.__seconds_lenght = self.__midi.length
-
-
-    def get_messages(self):
-        self.__notes = []
-        current_tempo = None
+    def generate_map(self):
+        self.__map = {}
+        track_counter = 1
+        position = 0
+        current_tempo = 60
+        bar_size = (4,4)
         for track in self.__midi.tracks:
+            track_name = 'track' + str(track_counter)
+            self.__map[track_name] = {}
+            track_dict = self.__map[track_name]
             for msg in track:
                 if hasattr(msg, 'type') and msg.type == 'set_tempo':
                     current_tempo = msg.tempo
                 elif hasattr(msg, 'type') and msg.type == 'note_on':
-                    self.__notes.append(Note(msg, current_tempo))
-            
-            """
-            self.__notes.extend(
-                [Note(msg) for msg in track if 
-                    hasattr(track, 'type') and track.type == 'note_on'
-                ]
-            )
-            """
+                    #if msg.time:
+                    n = Note(msg, current_tempo, position, bar_size)
+                    if n.position in track_dict:
+                        track_dict[n.position].append(n)
+                    else:
+                        track_dict[n.position] = [n]
+                    position += n.tempo_velocity
+                elif hasattr(msg, 'type') and msg.type == 'time_signature':
+                    bar_size = (msg.numerator, msg.denominator)
+            track_counter += 1
 
 
     def visualize(self):
@@ -96,5 +99,18 @@ class Song:
 
 
     def play(self):
-        for note in self.__notes:
-            Beep(note.frequency, note.tempo_velocity)
+        self.generate_map()
+        
+        # Make it play multiple tracks simuntaneosly
+        track = self.__map['track1']
+        for position in track.keys():
+            msg = 'Playing: '
+            for note in track[position]:
+                if not note.is_silent:
+                    Beep(note.frequency, note.tempo_velocity)
+                    msg += f'{note.name} ({note.tempo_velocity} millis), '
+                else:
+                    time.sleep(note.tempo_velocity / 1000)
+                    msg += f'SILENCE ({note.tempo_velocity} millis), '
+                
+            print(msg[:-2])

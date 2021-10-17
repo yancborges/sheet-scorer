@@ -5,7 +5,7 @@ from app.reader import read_midi, Song
 from mido import MidiFile
 
 path = 'C://Users//yancb//Desktop//code//repositories//sheet-scorer//samples//'
-file_name = 'Prlude_No._4_in_E_Minor_Op._28_-_Frdric_Chopin.mid'
+file_name = 'Ave_Maria_D839_-_Schubert_-_Solo_Piano_Arrg..mid'
 
 
 class MidiReader(TestCase):
