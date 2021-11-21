@@ -5,7 +5,7 @@ from app.reader import read_midi, Song
 from mido import MidiFile
 
 path = 'C://Users//yancb//Desktop//code//repositories//sheet-scorer//samples//'
-file_name = 'Ave_Maria_D839_-_Schubert_-_Solo_Piano_Arrg..mid'
+file_name = 'Fur_Elise.mid'
 
 
 class MidiReader(TestCase):
@@ -27,5 +27,6 @@ class MidiReader(TestCase):
 
 #main()
 song = Song(path + file_name)
-song.play()
+song.score()
+#song.play()
 

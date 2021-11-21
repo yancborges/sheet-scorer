@@ -82,7 +82,7 @@ class Song:
                         track_dict[n.position] = [n]
                     position += n.tempo_velocity
                 elif hasattr(msg, 'type') and msg.type == 'time_signature':
-                    bar_size = (msg.numerator, msg.denominator)
+                    bar_size = (int(msg.clocks_per_click / msg.notated_32nd_notes_per_beat), msg.notated_32nd_notes_per_beat)
             track_counter += 1
 
 
@@ -98,19 +98,46 @@ class Song:
         plt.show()
 
 
+    def score(self):
+        self.generate_map()
+        track_info = {track: 
+            {
+                'milliseconds_total': 0,
+                'notes': 0,
+                'attack_total': 0,
+                'bar_variation': [],
+                'note_size_avg_ms': 0
+            } 
+            for track in self.__map}
+        for track in self.__map:
+            for key in self.__map[track]:
+                for note in self.__map[track][key]:
+                    track_info[track]['milliseconds_total'] += note.tempo_velocity
+                    track_info[track]['notes'] += 1
+                    track_info[track]['attack_total'] += note.attack
+                    track_info[track]['bar_variation'].append(note.bar_size)
+            
+            track_info[track]['bar_variation'] = set(track_info[track]['bar_variation'])
+            track_info[track]['bar_variation'] = track_info[track]['notes'] / len(track_info[track]['bar_variation'])
+            track_info[track]['note_size_avg_ms'] = track_info[track]['milliseconds_total'] / track_info[track]['notes']
+
+        x = 0
+
     def play(self):
         self.generate_map()
         
-        # Make it play multiple tracks simuntaneosly
-        track = self.__map['track1']
-        for position in track.keys():
-            msg = 'Playing: '
-            for note in track[position]:
-                if not note.is_silent:
-                    Beep(note.frequency, note.tempo_velocity)
-                    msg += f'{note.name} ({note.tempo_velocity} millis), '
-                else:
-                    time.sleep(note.tempo_velocity / 1000)
-                    msg += f'SILENCE ({note.tempo_velocity} millis), '
+        for track_id in self.__map.keys():
+            track = self.__map[track_id]
+            print('Playing', track)
+            for position in track.keys():
+                msg = 'Playing: '
+                for note in track[position]:
+                    if not note.is_silent:
+                        Beep(note.frequency, note.tempo_velocity)
+                        msg += f'{note.name} ({note.tempo_velocity} millis), '
+                    else:
+                        time.sleep(note.tempo_velocity / 1000)
+                        msg += f'SILENCE ({note.tempo_velocity} millis), '
+            
                 
             print(msg[:-2])
